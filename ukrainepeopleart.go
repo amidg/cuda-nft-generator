@@ -38,6 +38,7 @@ type ukrainepeoplenft struct {
 	eyestype  string
 	extra     string
 	backgroud string
+	
 }
 
 func newWolf(newWolfName string, newWolfWisdom string, phrase1 string, phrase2 string) *Wolf {
