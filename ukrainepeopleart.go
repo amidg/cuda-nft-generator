@@ -31,28 +31,20 @@ var (
 )
 
 // image struct
-type ukrainepeoplenft struct {
+type ukranian struct {
 	name      string
 	bodytype  string
 	hairtype  string
 	eyestype  string
 	extra     string
 	backgroud string
-	
 }
 
-func newWolf(newWolfName string, newWolfWisdom string, phrase1 string, phrase2 string) *Wolf {
+func defaultukranian(name string, body string, hair string, eyes string, extra string, background string) *ukranian {
 
-	if phrase1 == "" {
-		phrase1 = "Wolf is stronger than lion"
-	} else if phrase2 == "" {
-		phrase2 = "but does not perform in circus"
-	} else if newWolfWisdom == "" || newWolfWisdom == "default" {
-		newWolfWisdom = "Wolf is stronger than lion but does not perform in circus"
-	}
+	person := ukranian{name: name, bodytype: body, hairtype: hair, eyestype: eyes, extra: extra, backgroud: background}
 
-	w := Wolf{name: newWolfName, wisdom: newWolfWisdom, phrase1: phrase1, phrase2: phrase2}
-	return &w
+	return &person
 }
 
 /////////////////////////////////////////////////////////////
