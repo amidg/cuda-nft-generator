@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/fogleman/gg"
+	"github.com/schollz/progressbar/v3"
 )
 
 /////////////////////////////////////////////
@@ -371,6 +372,11 @@ func main() {
 			fmt.Println(imageID)
 		}
 	} else if *randomIDs == 0 {
+		generation := progressbar.DefaultBytes(
+			(int64(*numberOfImagesFlag)),
+			"Generating NFTs",
+		)
+
 		for i := 0; i < *numberOfImagesFlag; i++ {
 			imageid, body, eyes, hair, clothing, extra, corner, background := generateImageID(*genderFlag)
 			person := createukranian(imageid, body, eyes, hair, clothing, extra, corner, background)
@@ -379,6 +385,8 @@ func main() {
 				fmt.Println(err)
 				os.Exit(3)
 			}
+
+			generation.Add(1)
 		}
 	}
 }
