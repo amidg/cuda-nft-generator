@@ -128,7 +128,7 @@ func getNumberOfFilesAtFolder(pathToFolder string, component *componentdata) {
 
 	// component.filename[0] = "empty"
 	for iter, f := range files {
-		component.filename[iter+1] = f.Name() // 0 -> reserved for nothing
+		component.filename[iter] = f.Name() // 0 -> reserved for nothing
 		component.filecounter = component.filecounter + 1
 	}
 }
@@ -203,32 +203,22 @@ func recordImageID(imageID string) {
 func generateImageID(gender string) (imageID, body, eyes, hair, clothing, extra, corner, background string) {
 	rand.Seed(time.Now().UnixNano())
 	for iter := 0; iter < imageGenerationRetries; iter++ {
-		body := library.body.filename[rand.Intn(library.body.filecounter)+1]             // cannot be 0
-		eyes := library.eyes.filename[rand.Intn(library.eyes.filecounter)+1]             // cannot be 0
-		hair := library.hair.filename[rand.Intn(library.hair.filecounter)+1]             // cannot be 0
-		clothing := library.clothing.filename[rand.Intn(library.clothing.filecounter)+1] // cannot be 0
-		extra := library.extra.filename[rand.Intn(library.extra.filecounter)]
-		corner := library.corner.filename[rand.Intn(library.corner.filecounter)]
-		background := library.background.filename[rand.Intn(library.background.filecounter)+1] // cannot be 0
+		//n := a + rand.Intn(b-a+1)
+		body = library.body.filename[rand.Intn(library.body.filecounter)]             // cannot be 0
+		eyes = library.eyes.filename[rand.Intn(library.eyes.filecounter)]             // cannot be 0
+		hair = library.hair.filename[rand.Intn(library.hair.filecounter)]             // cannot be 0
+		clothing = library.clothing.filename[rand.Intn(library.clothing.filecounter)] // cannot be 0
+		extra = library.extra.filename[rand.Intn(library.extra.filecounter)]
+		corner = library.corner.filename[rand.Intn(library.corner.filecounter)]
+		background = library.background.filename[rand.Intn(library.background.filecounter)] // cannot be 0
 
-		body = body[:len(body)-4]
-		eyes = eyes[:len(eyes)-4]
-		hair = hair[:len(hair)-4]
-		clothing = clothing[:len(clothing)-4]
-
-		if len(extra) == 0 {
-			extra = "empty"
-		} else if len(extra) > 4 {
-			extra = extra[:len(extra)-4]
-		}
-
-		if len(corner) == 0 {
-			corner = "empty"
-		} else if len(corner) > 4 {
-			corner = corner[:len(corner)-4]
-		}
-
-		background = background[:len(background)-4]
+		body = body[:len(body)-len(".png")]
+		eyes = eyes[:len(eyes)-len(".png")]
+		hair = hair[:len(hair)-len(".png")]
+		clothing = clothing[:len(clothing)-len(".png")]
+		extra = extra[:len(extra)-len(".png")]
+		corner = corner[:len(corner)-len(".png")]
+		background = background[:len(background)-len(".png")]
 
 		imageID = gender + "_" + body + eyes + hair + clothing + extra + corner + background
 
@@ -384,7 +374,6 @@ func main() {
 	} else if *randomIDs == 0 {
 		for i := 0; i < *numberOfImagesFlag; i++ {
 			imageid, body, eyes, hair, clothing, extra, corner, background := generateImageID(*genderFlag)
-			fmt.Println(imageid + ", " + body + ", " + eyes + ", " + hair + ", " + clothing + ", " + extra + ", " + corner + ", " + background)
 			person := createukranian(imageid, body, eyes, hair, clothing, extra, corner, background)
 			success, err := createNFTimage(person)
 			if !success {
