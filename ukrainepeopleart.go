@@ -305,7 +305,7 @@ func createNFTimage(person *ukranian) (success bool, err error) { //returns rege
 	}
 
 	// save image and log it
-	ukrainenftimg.SavePNG(nftpath + "/" + imageGender + "/" + imageID)
+	ukrainenftimg.SavePNG(nftpath + "/" + imageGender + "/" + imageID + ".png")
 	recordImageID(imageID)
 
 	if err == nil {
