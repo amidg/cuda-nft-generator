@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"image"
+	"image/png"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -11,29 +13,30 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fogleman/gg"
 )
 
 /////////////////////////////////////////////
 //GLOBAL VARIABLES
 var (
 	pathToLogFile            = "./NFTs/log.txt"
+	nftpath                  = "./NFTs/"
 	pathToSourceImagesFolder = "./Source/"
-	pathToCornerStuff        = "./Source/Corner/"
+	pathToCorner             = "./Source/Corner/"
 	pathToBackground         = "./Source/Background/"
-	basepathgirl             = "./Source/Girl/"
-	nftpathGirl              = "./NFTs/Girl/"
-	pathtoGirlBody           = "./Source/Girl/body/"
-	pathToGirlEyes           = "./Source/Girl/eyes/"
-	pathToGirlHair           = "./Source/Girl/hair/"
-	pathToGirlClothing       = "./Source/Girl/clothing/"
-	pathToGirlExtra          = "./Source/Girl/extra/"
-	basepathboy              = "./Source/Boy/"
-	nftpathBoy               = "./NFTs/Boy/"
-	pathtoBoyBody            = "./Source/Boy/body/"
-	pathToBoyEyes            = "./Source/Boy/eyes/"
-	pathToBoyHair            = "./Source/Boy/hair/"
-	pathToBoyClothing        = "./Source/Boy/clothing/"
-	pathToBoyExtra           = "./Source/Boy/extra/"
+	basepathgirl             = "./Source/girl/"
+	pathtoGirlBody           = "./Source/girl/body/"
+	pathToGirlEyes           = "./Source/girl/eyes/"
+	pathToGirlHair           = "./Source/girl/hair/"
+	pathToGirlClothing       = "./Source/girl/clothing/"
+	pathToGirlExtra          = "./Source/girl/extra/"
+	basepathboy              = "./Source/boy/"
+	pathtoBoyBody            = "./Source/boy/body/"
+	pathToBoyEyes            = "./Source/boy/eyes/"
+	pathToBoyHair            = "./Source/boy/hair/"
+	pathToBoyClothing        = "./Source/boy/clothing/"
+	pathToBoyExtra           = "./Source/boy/extra/"
 )
 
 // image struct
@@ -56,22 +59,34 @@ type sourcelibrary struct {
 	background componentdata
 }
 
+const imagecomponents = 7 // background, body, eyes, hair, clothing, extra, corner
+
+const (
+	Background int = 0
+	Body       int = 1
+	Eyes       int = 2
+	Hair       int = 3
+	Clothing   int = 4
+	Extra      int = 5
+	Corner     int = 6
+)
+
 var library sourcelibrary
 
 type ukranian struct {
-	name      string
-	bodytype  string
-	eyestype  string
-	hairtype  string
-	dresstype string
-	extra     string
-	corner    string
-	backgroud string
+	name       string
+	bodytype   string
+	eyestype   string
+	hairtype   string
+	dresstype  string
+	extra      string
+	corner     string
+	background string
 }
 
 func createukranian(name string, body string, eyes string, hair string, dress string, extra string, corner string, background string) *ukranian {
 
-	person := ukranian{name: name, bodytype: body, eyestype: eyes, hairtype: hair, dresstype: dress, extra: extra, corner: corner, backgroud: background}
+	person := ukranian{name: name, bodytype: body, eyestype: eyes, hairtype: hair, dresstype: dress, extra: extra, corner: corner, background: background}
 
 	return &person
 }
@@ -131,7 +146,7 @@ func checkNumberOfAvailableImages(basepath string, category string) { //purely v
 	case "extra":
 		getNumberOfFilesAtFolder(basepath+category+"/", &library.extra)
 	case "corner":
-		getNumberOfFilesAtFolder(pathToCornerStuff, &library.corner)
+		getNumberOfFilesAtFolder(pathToCorner, &library.corner)
 	case "background":
 		getNumberOfFilesAtFolder(pathToBackground, &library.background)
 	}
@@ -153,7 +168,7 @@ func generatelibrary(gender string) {
 		checkNumberOfAvailableImages(basepathboy, "extra")
 	}
 
-	checkNumberOfAvailableImages(pathToCornerStuff, "corner")
+	checkNumberOfAvailableImages(pathToCorner, "corner")
 	checkNumberOfAvailableImages(pathToBackground, "background")
 }
 
@@ -170,31 +185,31 @@ func checkEntireLogFile(input string) (nomatch bool) {
 	return nomatch
 }
 
-/*
-	type sourcelibrary struct {
-	body       componentdata
-	eyes       componentdata
-	hair       componentdata
-	clothing   componentdata
-	extra      componentdata
-	corner     componentdata
-	background componentdata
-}
-
-*/
-
 /////////////////////////////////////////////////////////////
 // IMAGE FUNCTIONS:
+func recordImageID(imageID string) {
+	logfile, openerr := os.OpenFile(pathToLogFile, os.O_APPEND|os.O_WRONLY, 0644)
+
+	_, logerr := logfile.WriteString(imageID + "\n")
+
+	if openerr != nil || logerr != nil {
+		println("file error")
+		os.Exit(3)
+	}
+
+	logfile.Close()
+}
+
 func generateImageID(gender string) (imageID, body, eyes, hair, clothing, extra, corner, background string) {
 	rand.Seed(time.Now().UnixNano())
 	for iter := 0; iter < imageGenerationRetries; iter++ {
-		body := library.body.filename[rand.Intn(library.body.filecounter)+1]
-		eyes := library.eyes.filename[rand.Intn(library.eyes.filecounter)+1]
-		hair := library.hair.filename[rand.Intn(library.hair.filecounter)+1]
-		clothing := library.clothing.filename[rand.Intn(library.clothing.filecounter)+1]
+		body := library.body.filename[rand.Intn(library.body.filecounter)+1]             // cannot be 0
+		eyes := library.eyes.filename[rand.Intn(library.eyes.filecounter)+1]             // cannot be 0
+		hair := library.hair.filename[rand.Intn(library.hair.filecounter)+1]             // cannot be 0
+		clothing := library.clothing.filename[rand.Intn(library.clothing.filecounter)+1] // cannot be 0
 		extra := library.extra.filename[rand.Intn(library.extra.filecounter)]
 		corner := library.corner.filename[rand.Intn(library.corner.filecounter)]
-		background := library.background.filename[rand.Intn(library.background.filecounter)+1]
+		background := library.background.filename[rand.Intn(library.background.filecounter)+1] // cannot be 0
 
 		body = body[:len(body)-4]
 		eyes = eyes[:len(eyes)-4]
@@ -229,35 +244,86 @@ func generateImageID(gender string) (imageID, body, eyes, hair, clothing, extra,
 	return imageID, body, eyes, hair, clothing, extra, corner, background
 }
 
-// func readAndDecodeImage() (image.Image, int, int) { //returns regenerated jpegs and its sizes
-// 	rand.Seed(time.Now().UnixNano())
-// 	var imageChosen = rand.Intn(numberOfAvailableImages) //choose random image between 0 and max image
-// 	var imagePath = "ImgSource/" + wolfTemplateNames[imageChosen]
-// 	//fmt.Println(imagePath)
+func openImage(path string) (image.Image, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("failed to open: %s", err)
+	}
 
-// 	// Read image from file that already exists
-// 	wolfImage, wolfImageErr := os.Open(imagePath) //example of image path "Source/wolf1.jpeg"
-// 	if wolfImageErr != nil {
-// 		// Handle error
-// 	}
-// 	defer wolfImage.Close()
+	image, err := png.Decode(file)
+	if err != nil {
+		log.Fatalf("failed to decode: %s", err)
+	}
+	defer file.Close()
 
-// 	// directly decode image
-// 	loadedWolfImage, loadedWolfImageErr := jpeg.Decode(wolfImage)
-// 	if loadedWolfImageErr != nil {
-// 		// Handle error
-// 	}
+	return image, err
+}
 
-// 	//determine image size
-// 	imageRect := loadedWolfImage.Bounds()
-// 	wolfImgWidth := imageRect.Dx()
-// 	wolfImgHeight := imageRect.Dy()
-// 	fmt.Print(wolfImgWidth)
-// 	fmt.Print(" by ")
-// 	fmt.Println(wolfImgHeight)
+func createNFTimage(person *ukranian) (success bool, err error) { //returns regenerated jpegs and its sizes
+	// read images from the person data
+	imageID := person.name
+	body := person.bodytype
+	eyes := person.eyestype
+	hair := person.hairtype
+	clothing := person.dresstype
+	extra := person.extra
+	corner := person.corner
+	background := person.background
+	imageGender := imageID[:4]
 
-// 	return loadedWolfImage, wolfImgWidth, wolfImgHeight
-// }
+	if imageGender == "boy_" {
+		imageGender = imageGender[:3]
+	}
+
+	imageData := [imagecomponents]string{background, body, eyes, hair, clothing, extra, corner} // set in order of image merging
+	fmt.Println(imageData)
+
+	// create default image
+	ukrainenftimg := gg.NewContext(4096, 4096)
+	var openedImage image.Image
+
+	// add new layers from the person data
+	for imageGenOrder := 0; imageGenOrder < imagecomponents; imageGenOrder++ {
+		// choose layer
+		if imageData[imageGenOrder] != "empty" {
+			switch imageGenOrder {
+			case Background:
+				openedImage, err = openImage(pathToBackground + imageData[Background] + ".png")
+			case Body:
+				openedImage, err = openImage(pathToSourceImagesFolder + "/" + imageGender + "/" + "body/" + imageData[Body] + ".png")
+			case Eyes:
+				openedImage, err = openImage(pathToSourceImagesFolder + "/" + imageGender + "/" + "eyes/" + imageData[Eyes] + ".png")
+			case Hair:
+				openedImage, err = openImage(pathToSourceImagesFolder + "/" + imageGender + "/" + "hair/" + imageData[Hair] + ".png")
+			case Clothing:
+				openedImage, err = openImage(pathToSourceImagesFolder + "/" + imageGender + "/" + "clothing/" + imageData[Clothing] + ".png")
+			case Extra:
+				openedImage, err = openImage(pathToSourceImagesFolder + "/" + imageGender + "/" + "extra/" + imageData[Extra] + ".png")
+			case Corner:
+				openedImage, err = openImage(pathToCorner + imageData[Corner] + ".png")
+			}
+		}
+
+		// check for errors
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(3)
+		}
+
+		// add layer
+		ukrainenftimg.DrawImage(openedImage, 0, 0)
+	}
+
+	// save image and log it
+	ukrainenftimg.SavePNG(nftpath + "/" + imageGender + "/" + imageID)
+	recordImageID(imageID)
+
+	if err == nil {
+		success = true
+	}
+
+	return success, err
+}
 
 // DEBUG FUNCTIONS ///////////////////////////////
 func showListOfFiles(filetype string) {
@@ -283,7 +349,7 @@ func showListOfFiles(filetype string) {
 		fmt.Println(library.extra.filename)
 		fmt.Println(library.extra.filecounter)
 	case "corner":
-		checkNumberOfAvailableImages(pathToCornerStuff, "corner")
+		checkNumberOfAvailableImages(pathToCorner, "corner")
 		fmt.Println(library.corner.filename)
 		fmt.Println(library.corner.filecounter)
 	case "background":
@@ -316,18 +382,15 @@ func main() {
 			fmt.Println(imageID)
 		}
 	} else if *randomIDs == 0 {
-		switch *genderFlag {
-		case "girl":
-			for i := 0; i < *numberOfImagesFlag; i++ {
-
+		for i := 0; i < *numberOfImagesFlag; i++ {
+			imageid, body, eyes, hair, clothing, extra, corner, background := generateImageID(*genderFlag)
+			fmt.Println(imageid + ", " + body + ", " + eyes + ", " + hair + ", " + clothing + ", " + extra + ", " + corner + ", " + background)
+			person := createukranian(imageid, body, eyes, hair, clothing, extra, corner, background)
+			success, err := createNFTimage(person)
+			if !success {
+				fmt.Println(err)
+				os.Exit(3)
 			}
-		case "boy":
-			for i := 0; i < *numberOfImagesFlag; i++ {
-
-			}
-		default:
-			fmt.Println("please provide gender")
-			os.Exit(3)
 		}
 	}
 }
