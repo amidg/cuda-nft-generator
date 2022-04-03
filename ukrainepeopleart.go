@@ -266,7 +266,6 @@ func createNFTimage(person *ukranian) (success bool, err error) { //returns rege
 	}
 
 	imageData := [imagecomponents]string{background, body, eyes, hair, clothing, extra, corner} // set in order of image merging
-	fmt.Println(imageData)
 
 	// create default image
 	ukrainenftimg := gg.NewContext(4096, 4096)
