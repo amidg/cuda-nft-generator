@@ -355,6 +355,8 @@ func main() {
 	genderFlag := flag.String("gender", "", "specify boy or girl")
 	showListOfFileNames := flag.String("showfilelist", "", "show list of files of the specified type, e.g. body")
 	randomIDs := flag.Int("randomids", 0, "generate random image id of the speicified count")
+	isJetson := flag.Bool("jetson", false, "set this flag to use Jetson build with CUDA")
+	useCUDA := flag.Bool("cuda", false, "set this flag to use CUDA on amd64 build for desktop")
 	flag.Parse()
 
 	*genderFlag = eliminateNewLineCrap(*genderFlag)
@@ -377,10 +379,25 @@ func main() {
 			"Generating NFTs",
 		)
 
+		var success bool
+		var err error
 		for i := 0; i < *numberOfImagesFlag; i++ {
 			imageid, body, eyes, hair, clothing, extra, corner, background := generateImageID(*genderFlag)
 			person := createukranian(imageid, body, eyes, hair, clothing, extra, corner, background)
-			success, err := createNFTimage(person)
+			switch *isJetson {
+			case true:
+				// use jetson stuff -> jetson_utils required
+
+			default:
+				// use x86 build
+				switch *useCUDA {
+				case true:
+					// use x86 CUDA (requires NVidia GPU in the system, auto-detected)
+				case false:
+					// use CPU only (slow)
+					success, err = createNFTimage(person)
+				}
+			}
 			if !success {
 				fmt.Println(err)
 				os.Exit(3)
