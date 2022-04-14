@@ -38,8 +38,10 @@ Mat overlayTwoImagesAtZeroUsingCUDA(Mat imageArray[2]) {
 	Mat mask;
 
 	// alpha-channel for transperancy using GPU
-	cv::cuda::GpuMat tempImg, tempMask, tempImageWithAlpha;
-    std::vector<cv::cuda::GpuMat> channels(3);
+	cuda::GpuMat tempImg, tempMask, tempImageWithAlpha;
+
+    vector<cuda::GpuMat> channels(4);
+	Mat channelsDebug[4];
 
 	// initialize image in GPU
 	cuda::GpuMat NewImg(imageArray[0].rows, imageArray[0].cols, imageArray[0].type()); // create new image
@@ -49,12 +51,22 @@ Mat overlayTwoImagesAtZeroUsingCUDA(Mat imageArray[2]) {
 		tempImg.upload(imageArray[i]);
     	tempMask.upload(mask);
 		cuda::split(tempImg, channels); // break image into channels
+		for (int j = 0; j < sizeof(channelsDebug)/sizeof(Mat); j++) {
+			channels[j].download(channelsDebug[j]);
+			cout << sizeof(channelsDebug[j])/sizeof(Mat) << endl;
+		}
 		channels.push_back(tempMask); // append alpha channel
+		for (int j = 0; j < sizeof(channelsDebug)/sizeof(Mat); j++) {
+			channels[j].download(channelsDebug[j]);
+			cout << sizeof(channelsDebug[j])/sizeof(Mat) << endl;
+		}
+		break;
+		//cuda::merge(channels, 3, tempImageWithAlpha); // combine channels using different merge method
 		cuda::merge(channels, tempImageWithAlpha); // combine channels
 		tempImageWithAlpha.download(imageArray[i]); // download from GPU memory
 
 		// overlay two images in GPU
-		imageArray[i].copyTo(NewImg(Rect(0,0, imageArray[i].cols, imageArray[i].rows)));
+		imageArray[i].copyTo(NewImg(Rect(0, 0, imageArray[i].cols, imageArray[i].rows)));
 	}
 
 	// download image from GPU memory
