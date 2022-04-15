@@ -16,15 +16,33 @@ const double alpha = 1;
 string sourceBackground = "./Source/Background/BACK4.png";
 string sourceBody = "./Source/girl/body/GIRL.png";
 string sourceEyes = "./Source/girl/eyes/EYES1.png";
-string sourceHair = "./Source/girl/hair/HAIR1.png";
+string sourceHair = "./Source/girl/hair/HAIR2.png";
 string sourceDress = "./Source/girl/clothing/empty.png";
 string sourceExtra = "./Source/girl/extra/ROSE.png";
 string sourceCorner = "./Source/Corner/CORNER1.png";
 
 string imagesForTesting[] = {sourceBackground, sourceBody, sourceEyes, sourceHair, sourceDress, sourceExtra, sourceCorner};
 
+void makeBlackExtraBlack(Mat& input) {
+	for (int r = 0; r < input.rows; ++r)
+    {
+        for (int c = 0; c < input.cols; ++c)
+        {
+            Vec4b& pixel = input.at<Vec4b>(r,c);
+            if (pixel[0] < 20 && pixel[1] < 20 && pixel[2] < 20) {
+				pixel[0] = 0;
+				pixel[1] = 0;
+				pixel[2] = 0;
+				pixel[3] = 255;
+			}
+
+			input.at<Vec4b>(r,c) = pixel;
+        }
+    }
+}
+
 void addAlphaChannelTo(Mat& input) {
-	cuda::GpuMat alphaMask(input.rows, input.cols, CV_8UC1, Scalar(255)); //8bit 1 channel alpha mask
+	cuda::GpuMat alphaMask(input.rows, input.cols, CV_8UC1, Scalar(255)); //8bit 1 channel alpha mask, should add white
 
 	// alpha-channel for transperancy using GPU
 	cuda::GpuMat tempImg; //, tempMask;
@@ -47,6 +65,9 @@ void addAlphaChannelTo(Mat& input) {
 
 		//cout << "Alpha Channel added: " << (input.channels() == 4) << endl;
 	}
+
+	tempImg.release();
+	tempImageWithAlpha.release(); // deallocate memory
 }
 
 Mat overlayImagesUsingCUDA(Mat imageArray[], int imageArraySize) { 
@@ -54,11 +75,11 @@ Mat overlayImagesUsingCUDA(Mat imageArray[], int imageArraySize) {
 	Mat result;
 
 	// initialize image in GPU
-	cuda::GpuMat gpuresult(imageArray[0].rows, imageArray[0].cols, CV_8UC4, Scalar(255)); //(imageArray[0].rows, imageArray[0].cols, imageArray[0].type()); // create new image
+	cuda::GpuMat gpuresult(imageArray[0].rows, imageArray[0].cols, CV_8UC4);
 
 	for (int iter = 0; iter < imageArraySize; iter++) {
 		if (imageArray[iter].channels() == 1) {
-			cout << "empty image detected" << endl;
+			cout << "empty image detected: " << imagesForTesting[iter] << endl;
 			break;
 		}
 
@@ -69,9 +90,11 @@ Mat overlayImagesUsingCUDA(Mat imageArray[], int imageArraySize) {
 			//imageArray[iter].copyTo(gpuresult(Rect(0, 0, imageArray[iter].cols, imageArray[iter].rows)));
 		default:
 			// overlay two images in GPU -> must have alpha channel as well
-			gpuresult.download(imageArray[iter-1]);
-			cuda::addWeighted(imageArray[iter-1], 1, imageArray[iter], alpha, 0, gpuresult);
-			//imageArray[iter].copyTo(NewImg(Rect(0, 0, imageArray[iter].cols, imageArray[iter].rows)));
+			//gpuresult.download(imageArray[iter-1]);
+			//cuda::bitwise_and(imageArray[iter-1], imageArray[iter], gpuresult);
+			// cuda::addWeighted(gpuresult, 1, imageArray[iter], alpha, 0, gpuresult);
+			cuda::add(gpuresult, imageArray[iter], gpuresult);
+			//imageArray[iter].copyTo(gpuresult(Rect(0, 0, imageArray[iter].cols, imageArray[iter].rows))); // direct overlay, no blending
 		}
 	}
 
@@ -81,21 +104,27 @@ Mat overlayImagesUsingCUDA(Mat imageArray[], int imageArraySize) {
 	return result;
 }
 
+/*
+	build: g++ cuda_image_gen.cpp -o testcuda -g `pkg-config --libs --cflags opencv4`
+*/
+
 int main(int argc, char *argv[]) {
-	Mat img[MAX_NUMBER_OF_NFT_ELEMENTS];
+	Mat characterImageArray[MAX_NUMBER_OF_NFT_ELEMENTS];
+
 	Mat completeImage;
 
-	img[0] = imread(imagesForTesting[0], IMREAD_UNCHANGED);
-	img[1] = imread(imagesForTesting[1], IMREAD_UNCHANGED);
-	img[2] = imread(imagesForTesting[2], IMREAD_UNCHANGED);
-	img[3] = imread(imagesForTesting[3], IMREAD_UNCHANGED);
-	img[4] = imread(imagesForTesting[4], IMREAD_UNCHANGED);
-	img[5] = imread(imagesForTesting[5], IMREAD_UNCHANGED);
-	img[6] = imread(imagesForTesting[6], IMREAD_UNCHANGED);
+	// read images from source
+	for (int i = 0; i < MAX_NUMBER_OF_NFT_ELEMENTS; i++) {
+		characterImageArray[i] = imread(imagesForTesting[i], IMREAD_UNCHANGED);
+		makeBlackExtraBlack(characterImageArray[i]);
+	}
 
-	completeImage = overlayImagesUsingCUDA(img, sizeof(img)/sizeof(Mat));	
+	// build image
+	completeImage = overlayImagesUsingCUDA(characterImageArray, sizeof(characterImageArray)/sizeof(Mat));	
 
 	imwrite("./NFTs/test.png", completeImage); // file is being saved
+
+	cout << "done" << endl;
 
     return 0;
 }

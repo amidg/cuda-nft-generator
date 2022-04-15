@@ -4,7 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/local/include/opencv4/**"
+                "/usr/local/include/opencv4/**",
+                "/usr/local/include/jetson-utils/**",
+                "/usr/local/include/jetson-inference/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
