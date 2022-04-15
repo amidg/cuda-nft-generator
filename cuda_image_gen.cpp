@@ -10,18 +10,6 @@
 using namespace cv;
 using namespace std;
 
-/*
-    type sourcelibrary struct {
-	body       componentdata
-	eyes       componentdata
-	hair       componentdata
-	clothing   componentdata
-	extra      componentdata
-	corner     componentdata
-	background componentdata
-}
-*/
-
 string sourceBackground = "./Source/Background/BACK4.png";
 string sourceBody = "./Source/girl/body/GIRL.png";
 string sourceEyes = "./Source/girl/eyes/EYES1.png";
@@ -35,37 +23,35 @@ string imagesForTesting[] = {sourceBackground, sourceBody, sourceEyes, sourceHai
 Mat overlayTwoImagesAtZeroUsingCUDA(Mat imageArray[2]) { 
 	// images must have same size
 	Mat result;
-	Mat mask;
+	Mat mask = Mat::zeros(4096, 4096, CV_8UC4);
 
 	// alpha-channel for transperancy using GPU
-	cuda::GpuMat tempImg, tempMask, tempImageWithAlpha;
-
-    vector<cuda::GpuMat> channels(4);
-	Mat channelsDebug[4];
+	cuda::GpuMat tempImg, tempMask;
+	cuda::GpuMat tempImageWithAlpha(imageArray[0].rows, imageArray[0].cols, imageArray[0].type());
+    vector<cuda::GpuMat> channels;
 
 	// initialize image in GPU
 	cuda::GpuMat NewImg(imageArray[0].rows, imageArray[0].cols, imageArray[0].type()); // create new image
 
 	// process alpha-channel
 	for (int i = 0; i < 2; i++) {
+		// upload image and mask layer
 		tempImg.upload(imageArray[i]);
     	tempMask.upload(mask);
-		cuda::split(tempImg, channels); // break image into channels
-		for (int j = 0; j < sizeof(channelsDebug)/sizeof(Mat); j++) {
-			channels[j].download(channelsDebug[j]);
-			cout << sizeof(channelsDebug[j])/sizeof(Mat) << endl;
-		}
-		channels.push_back(tempMask); // append alpha channel
-		for (int j = 0; j < sizeof(channelsDebug)/sizeof(Mat); j++) {
-			channels[j].download(channelsDebug[j]);
-			cout << sizeof(channelsDebug[j])/sizeof(Mat) << endl;
-		}
-		break;
-		//cuda::merge(channels, 3, tempImageWithAlpha); // combine channels using different merge method
-		cuda::merge(channels, tempImageWithAlpha); // combine channels
+		
+		// break image into channels
+		cuda::split(tempImg, channels); 
+		cout << channels.size() << endl; // 3
+
+		// append alpha channel
+		if (channels.size() == 3) { channels.push_back(tempMask); };
+		cout << channels.size() << endl; // 4
+
+		// combine channels
+		cuda::merge(channels, tempImageWithAlpha); 
 		tempImageWithAlpha.download(imageArray[i]); // download from GPU memory
 
-		// overlay two images in GPU
+		// overlay two images in GPU -> must have alpha channel as well
 		imageArray[i].copyTo(NewImg(Rect(0, 0, imageArray[i].cols, imageArray[i].rows)));
 	}
 
@@ -80,13 +66,13 @@ int main(int argc, char *argv[]) {
 	Mat completeImage;
 
 	for(int i = 0; i < 1; i++) {
-		img[0] = imread(imagesForTesting[0], IMREAD_UNCHANGED);
-		img[1] = imread(imagesForTesting[1], IMREAD_UNCHANGED);
+		img[0] = imread(imagesForTesting[0], IMREAD_COLOR);
+		img[1] = imread(imagesForTesting[1], IMREAD_COLOR);
 
 		completeImage = overlayTwoImagesAtZeroUsingCUDA(img);
 	}
 
-	imwrite("./NFTs/test.png", completeImage); // A JPG FILE IS BEING SAVED
+	imwrite("./NFTs/test.png", completeImage); // file is being saved
 
     return 0;
 }
