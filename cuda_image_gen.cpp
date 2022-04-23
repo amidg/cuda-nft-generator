@@ -102,12 +102,21 @@ Mat overlayImagesUsingCUDA(Mat imageArray[], int imageArraySize) {
 	return result;
 }
 
+void CUDAmergeNewAlphaChannelTo(cuda::GpuMat& singleChannelAlpha, cuda::GpuMat& image) {
+	vector<cuda::GpuMat> vec4b;
+	cuda::split(image, vec4b);
+	vec4b[3] = singleChannelAlpha.cuda::GpuMat::clone();
+	cuda::merge(vec4b, image);
+}
+
 Mat addBackgroundToImage(Mat imageArray[]) { 
 	// images must have same size
 	Mat result;
 
 	// initialize image in GPU
 	cuda::GpuMat gpuresult(imageArray[0].rows, imageArray[0].cols, CV_8UC4);
+	cuda::GpuMat backAlphaGPU(imageArray[0].rows, imageArray[0].cols, CV_8UC1);
+	cuda::GpuMat characterImage(imageArray[1].rows, imageArray[1].cols, CV_8UC4);
 
 	for (int iter = 0; iter < 2; iter++) {
 		if (imageArray[iter].channels() == 1) {
@@ -117,15 +126,27 @@ Mat addBackgroundToImage(Mat imageArray[]) {
 
 		switch (iter) {
 		case 0: // 0 must be some sort of background image
-			addAlphaChannelTo(imageArray[iter], 0); // executed only if 3 channels in the image
+			addAlphaChannelTo(imageArray[iter], 255); // executed only if 3 channels in the image
 			gpuresult.upload(imageArray[iter]);
 			break;
 		default:
-			// overlay two images in GPU -> must have alpha channel as well
+			// 1. get proper alpha channel for background image
+			vector<cuda::GpuMat> vec4b;
+			backAlphaGPU.upload(getAlphaChannelOf(imageArray[0]));
+			cuda::bitwise_not(backAlphaGPU, backAlphaGPU, getAlphaChannelOf(imageArray[iter]));
+			cuda::split(gpuresult, vec4b);
+			vec4b[3] = backAlphaGPU.cuda::GpuMat::clone();
+			cuda::merge(vec4b, gpuresult);
+
+			// 2. merge main picture to the background
+			characterImage.upload(imageArray[iter]);
+			backAlphaGPU = cuda::GpuMat(imageArray[iter].rows, imageArray[iter].cols, CV_8UC1, Scalar(255));
+			// CUDAmergeNewAlphaChannelTo(backAlphaGPU, characterImage);
+			// cuda::bitwise_or(gpuresult, characterImage, gpuresult);
 			//cuda::bitwise_not(imageArray[iter], gpuresult);
 			//cuda::bitwise_and(gpuresult, imageArray[iter], gpuresult); //, getAlphaChannelOf(imageArray[iter]));
 			//cuda::addWeighted(gpuresult, 1, imageArray[iter], alpha, 0, gpuresult);
-			cuda::add(gpuresult, imageArray[iter], gpuresult);
+			//cuda::add(gpuresult, imageArray[iter], gpuresult);
 			//imageArray[iter].copyTo(gpuresult(Rect(0, 0, imageArray[iter].cols, imageArray[iter].rows))); // direct overlay, no blending
 			break;
 		}
@@ -133,6 +154,8 @@ Mat addBackgroundToImage(Mat imageArray[]) {
 
 	// download image from GPU memory
 	gpuresult.download(result);
+
+	imwrite("./NFTs/test_alpha.png", getAlphaChannelOf(result));
 
 	return result;
 }
@@ -155,7 +178,6 @@ int main(int argc, char *argv[]) {
 	completeImage = overlayImagesUsingCUDA(characterImageArray, sizeof(characterImageArray)/sizeof(Mat));	
 
 	showAlphaChannelOf(completeImage);
-	imwrite("./NFTs/girltest.png", completeImage); // file is being saved
 
 	// get full image
 	fullImageArray[0] = imread(imagesForTesting[0], IMREAD_UNCHANGED);
