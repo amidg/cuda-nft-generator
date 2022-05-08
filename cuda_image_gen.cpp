@@ -118,7 +118,8 @@ Mat addBackgroundToImage(Mat imageArray[]) {
 	cuda::GpuMat backAlphaGPU(imageArray[0].rows, imageArray[0].cols, CV_8UC1);
 	cuda::GpuMat characterImage(imageArray[1].rows, imageArray[1].cols, CV_8UC4);
 
-	for (int iter = 0; iter < 2; iter++) {
+	for (int iter = 0; iter < 2; iter++) 
+	{
 		if (imageArray[iter].channels() == 1) {
 			cout << "empty image detected: " << imagesForTesting[iter] << endl;
 			break;
@@ -141,13 +142,6 @@ Mat addBackgroundToImage(Mat imageArray[]) {
 			// 2. merge main picture to the background
 			characterImage.upload(imageArray[iter]);
 			backAlphaGPU = cuda::GpuMat(imageArray[iter].rows, imageArray[iter].cols, CV_8UC1, Scalar(255));
-			// CUDAmergeNewAlphaChannelTo(backAlphaGPU, characterImage);
-			// cuda::bitwise_or(gpuresult, characterImage, gpuresult);
-			//cuda::bitwise_not(imageArray[iter], gpuresult);
-			//cuda::bitwise_and(gpuresult, imageArray[iter], gpuresult); //, getAlphaChannelOf(imageArray[iter]));
-			//cuda::addWeighted(gpuresult, 1, imageArray[iter], alpha, 0, gpuresult);
-			//cuda::add(gpuresult, imageArray[iter], gpuresult);
-			//imageArray[iter].copyTo(gpuresult(Rect(0, 0, imageArray[iter].cols, imageArray[iter].rows))); // direct overlay, no blending
 			break;
 		}
 	}
